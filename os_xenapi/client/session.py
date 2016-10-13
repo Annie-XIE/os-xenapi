@@ -26,6 +26,7 @@ import time
 
 from eventlet import queue
 from eventlet import timeout
+from oslo_config import cfg
 from oslo_log import log as logging
 from oslo_utils import versionutils
 from six.moves import http_client
@@ -37,19 +38,13 @@ try:
 except ImportError:
     import six.moves.xmlrpc_client as xmlrpclib
 
-import nova.conf
-from nova import context
-from nova import exception
-from nova.i18n import _, _LE, _LW
-from nova import objects
-from nova import version
-from nova.virt.xenapi.client import objects as cli_objects
-from nova.virt.xenapi import pool
-from nova.virt.xenapi import pool_states
+from os_xenapi.client.i18n import _, _LW
+from os_xenapi.client import objects as cli_objects
+
 
 LOG = logging.getLogger(__name__)
 
-CONF = nova.conf.CONF
+CONF = cfg.CONF
 
 
 def apply_session_helpers(session):
@@ -63,7 +58,6 @@ def apply_session_helpers(session):
     session.VLAN = cli_objects.VLAN(session)
     session.host = cli_objects.Host(session)
     session.network = cli_objects.Network(session)
-    session.pool = cli_objects.Pool(session)
 
 
 class XenAPISession(object):
@@ -76,15 +70,9 @@ class XenAPISession(object):
     PLUGIN_REQUIRED_VERSION = '1.8'
 
     def __init__(self, url, user, pw):
-        version_string = version.version_string_with_package()
-        self.nova_version = ('%(vendor)s %(product)s %(version)s' %
-                             {'vendor': version.vendor_string(),
-                              'product': version.product_string(),
-                              'version': version_string})
         import XenAPI
         self.XenAPI = XenAPI
         self._sessions = queue.Queue()
-        self.is_slave = False
         self.host_checked = False
         exception = self.XenAPI.Failure(_("Unable to log in to XenAPI "
                                           "(is the Dom0 disk full?)"))
@@ -101,8 +89,8 @@ class XenAPISession(object):
 
     def _login_with_password(self, user, pw, session, exception):
         with timeout.Timeout(CONF.xenserver.login_timeout, exception):
-            session.login_with_password(user, pw,
-                                        self.nova_version, 'OpenStack')
+            #TODO, removed self.nova_version, need double check
+            session.login_with_password(user, pw)
 
     def _verify_plugin_version(self):
         requested_version = self.PLUGIN_REQUIRED_VERSION
@@ -123,15 +111,7 @@ class XenAPISession(object):
         try:
             session = self._create_session_and_login(url, user, pw, exception)
         except self.XenAPI.Failure as e:
-            # if user and pw of the master are different, we're doomed!
-            if e.details[0] == 'HOST_IS_SLAVE':
-                master = e.details[1]
-                url = pool.swap_xapi_host(url, master)
-                session = self._create_session_and_login(url, user, pw,
-                                                         exception)
-                self.is_slave = True
-            else:
-                raise
+            raise
         self._sessions.put(session)
         return url
 
@@ -141,19 +121,9 @@ class XenAPISession(object):
             self._sessions.put(session)
 
     def _get_host_uuid(self):
-        if self.is_slave:
-            aggr = objects.AggregateList.get_by_host(
-                context.get_admin_context(),
-                CONF.host, key=pool_states.POOL_FLAG)[0]
-            if not aggr:
-                LOG.error(_LE('Host is member of a pool, but DB '
-                              'says otherwise'))
-                raise exception.AggregateHostNotFound()
-            return aggr.metadata[CONF.host]
-        else:
-            with self._get_session() as session:
-                host_ref = session.xenapi.session.get_this_host(session.handle)
-                return session.xenapi.host.get_uuid(host_ref)
+        with self._get_session() as session:
+            host_ref = session.xenapi.session.get_this_host(session.handle)
+            return session.xenapi.host.get_uuid(host_ref)
 
     def _get_product_version_and_brand(self):
         """Return a tuple of (major, minor, rev) for the host version and
@@ -270,7 +240,8 @@ class XenAPISession(object):
                 else:
                     raise
 
-        raise exception.PluginRetriesExceeded(num_retries=num_retries)
+        raise Exception("Number of retries to plugin (%d) exceeded."
+                        % num_retries)
 
     def _is_retryable_exception(self, exc, fn):
         _type, method, error = exc.details[:3]
@@ -347,10 +318,10 @@ class XenAPISession(object):
             yield task_ref
         finally:
             self.call_xenapi("task.destroy", task_ref)
-            LOG.debug('Destroyed task ref %s' % (task_ref))
+            LOG.debug('Destroyed task ref %s' % task_ref)
 
     @contextlib.contextmanager
-    def http_connection(session):
+    def http_connection(self, session):
         conn = None
 
         xs_url = urllib.parse.urlparse(session.url)
