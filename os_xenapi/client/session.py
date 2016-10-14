@@ -37,7 +37,8 @@ try:
 except ImportError:
     import six.moves.xmlrpc_client as xmlrpclib
 
-from os_xenapi.client.i18n import _, _LW
+from os_xenapi.client.i18n import _
+from os_xenapi.client.i18n import _LW
 from os_xenapi.client import objects as cli_objects
 
 LOG = logging.getLogger(__name__)
@@ -64,7 +65,6 @@ class XenAPISession(object):
     # MAJOR VERSION: Incompatible changes with the plugins
     # MINOR VERSION: Compatible changes, new plguins, etc
     PLUGIN_REQUIRED_VERSION = '1.8'
-
 
     def __init__(self, url, user, pw, timeout=10, concurrent=1):
         """Initialize session for connection with XenServer/Xen Cloud Platform
@@ -116,7 +116,7 @@ class XenAPISession(object):
     def _create_first_session(self, url, user, pw, exception):
         try:
             session = self._create_session_and_login(url, user, pw, exception)
-        except self.XenAPI.Failure as e:
+        except self.XenAPI.Failure:
             raise
         self._sessions.put(session)
         return url
@@ -318,7 +318,7 @@ class XenAPISession(object):
         """Return exclusive session for scope of with statement."""
         name = 'nova-%s' % (label)
         task_ref = self.call_xenapi("task.create", name,
-                                       desc)
+                                    desc)
         try:
             LOG.debug('Created task %s with ref %s' % (name, task_ref))
             yield task_ref

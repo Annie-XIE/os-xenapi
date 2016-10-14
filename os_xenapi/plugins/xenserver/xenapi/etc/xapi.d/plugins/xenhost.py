@@ -351,8 +351,7 @@ ALLOWED_NETWORK_CMDS = {
     'brctl_del_br': _brctl_del_br,
     'brctl_del_if': _brctl_del_if,
     'brctl_set_fd': _brctl_set_fd,
-    'brctl_set_stp': _brctl_set_stp
-    }
+    'brctl_set_stp': _brctl_set_stp}
 
 
 def network_config(session, args):

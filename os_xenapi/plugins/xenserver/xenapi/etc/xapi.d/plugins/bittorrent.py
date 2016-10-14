@@ -151,8 +151,8 @@ def _download(torrent_path, save_as_path, torrent_listen_port_start,
             if stall_duration > torrent_download_stall_cutoff:
                 logging.error(
                     "Download stalled: stall_duration=%d,"
-                    " torrent_download_stall_cutoff=%d" % (
-                    stall_duration, torrent_download_stall_cutoff))
+                    " torrent_download_stall_cutoff=%d" %
+                    (stall_duration, torrent_download_stall_cutoff))
                 raise Exception("Bittorrent download stall detected, bailing!")
 
             log_time += 1
@@ -187,7 +187,7 @@ def _should_seed(seed_path, torrent_seed_duration, torrent_seed_chance,
 
     num_active_seeders = len(list(_active_seeder_processes()))
     if (torrent_max_seeder_processes_per_host >= 0 and
-        num_active_seeders >= torrent_max_seeder_processes_per_host):
+       num_active_seeders >= torrent_max_seeder_processes_per_host):
         logging.debug("max number of seeder processes for this host reached"
                       " (%d), skipping..." %
                       torrent_max_seeder_processes_per_host)

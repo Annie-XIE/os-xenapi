@@ -16,6 +16,7 @@ from oslo_concurrency import lockutils
 
 synchronized = lockutils.synchronized_with_prefix('os-xenapi-')
 
+
 class XenAPISessionObject(object):
     """Wrapper to make calling and mocking the session easier
 

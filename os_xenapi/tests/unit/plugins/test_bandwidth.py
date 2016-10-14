@@ -35,9 +35,7 @@ class BandwidthTestCase(plugin_test.PluginTestBase):
         'vif2.1: 3 0 0 0 0 0 0 0 13 0 0 0 0 0 0 0',
         'vifabcd1234-c: 4 0 0 0 0 0 0 0 14 0 0 0 0 0 0 0\n']
         expect_devmap = {'2': {'1': {'bw_in': 13, 'bw_out': 3},
-                               '0': {'bw_in': 12, 'bw_out': 2}
-                              }
-                        }
+                               '0': {'bw_in': 12, 'bw_out': 2}}}
 
         mock_read_proc_net = self.mock_patch_object(
             self.bandwidth,
