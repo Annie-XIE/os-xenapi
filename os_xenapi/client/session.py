@@ -26,7 +26,6 @@ import time
 
 from eventlet import queue
 from eventlet import timeout
-from oslo_config import cfg
 from oslo_log import log as logging
 from oslo_utils import versionutils
 from six.moves import http_client
@@ -41,10 +40,7 @@ except ImportError:
 from os_xenapi.client.i18n import _, _LW
 from os_xenapi.client import objects as cli_objects
 
-
 LOG = logging.getLogger(__name__)
-
-CONF = cfg.CONF
 
 
 def apply_session_helpers(session):
@@ -69,9 +65,20 @@ class XenAPISession(object):
     # MINOR VERSION: Compatible changes, new plguins, etc
     PLUGIN_REQUIRED_VERSION = '1.8'
 
-    def __init__(self, url, user, pw):
+
+    def __init__(self, url, user, pw, timeout=10, concurrent=1):
+        """Initialize session for connection with XenServer/Xen Cloud Platform
+
+        :param url: URL for connection to XenServer/Xen Cloud Platform
+        :param user: Username for connection to XenServer/Xen Cloud Platform
+        :param pw: Password for connection to XenServer/Xen Cloud Platform
+        :param timeout: Timeout in seconds for XenAPI login
+        :param concurrent: Maximum concurrent XenAPI connections
+        """
         import XenAPI
         self.XenAPI = XenAPI
+        self.timeout = timeout
+        self.concurrent = concurrent
         self._sessions = queue.Queue()
         self.host_checked = False
         exception = self.XenAPI.Failure(_("Unable to log in to XenAPI "
@@ -88,8 +95,7 @@ class XenAPISession(object):
         apply_session_helpers(self)
 
     def _login_with_password(self, user, pw, session, exception):
-        with timeout.Timeout(CONF.xenserver.login_timeout, exception):
-            #TODO, removed self.nova_version, need double check
+        with timeout.Timeout(self.timeout, exception):
             session.login_with_password(user, pw)
 
     def _verify_plugin_version(self):
@@ -116,7 +122,7 @@ class XenAPISession(object):
         return url
 
     def _populate_session_pool(self, url, user, pw, exception):
-        for i in range(CONF.xenserver.connection_concurrent - 1):
+        for i in range(self.concurrent - 1):
             session = self._create_session_and_login(url, user, pw, exception)
             self._sessions.put(session)
 
