@@ -19,9 +19,8 @@ import sys
 
 import mock
 
-from nova import test
-from nova.virt.xenapi.client import session
-
+from os_xenapi.client import session
+from os_xenapi.tests import test
 
 # both XenAPI and XenAPIPlugin may not exist
 # in unit test environment.
